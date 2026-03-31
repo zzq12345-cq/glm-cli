@@ -101,6 +101,10 @@ import { recordContentReplacement } from './utils/sessionStorage.js'
 import { handleStopHooks } from './query/stopHooks.js'
 import { buildQueryConfig } from './query/config.js'
 import { productionDeps, type QueryDeps } from './query/deps.js'
+import {
+  classifyTaskFromMessages,
+  formatTaskClassificationForSystemContext,
+} from './query/taskClassification.js'
 import type { Terminal, Continue } from './query/transitions.js'
 import { feature } from 'bun:bundle'
 import {
@@ -110,6 +114,7 @@ import {
 } from './bootstrap/state.js'
 import { createBudgetTracker, checkTokenBudget } from './query/tokenBudget.js'
 import { count } from './utils/array.js'
+import { getAPIProvider } from './utils/model/providers.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
@@ -446,8 +451,23 @@ async function* queryLoop(
       messagesForQuery = collapseResult.messages
     }
 
+    const effectiveSystemContext =
+      getAPIProvider() === 'glm'
+        ? (() => {
+            const classification = classifyTaskFromMessages(messagesForQuery)
+            if (!classification || classification.intent === 'unknown') {
+              return systemContext
+            }
+            return {
+              ...systemContext,
+              task_classification:
+                formatTaskClassificationForSystemContext(classification),
+            }
+          })()
+        : systemContext
+
     const fullSystemPrompt = asSystemPrompt(
-      appendSystemContext(systemPrompt, systemContext),
+      appendSystemContext(systemPrompt, effectiveSystemContext),
     )
 
     queryCheckpoint('query_autocompact_start')
@@ -457,7 +477,7 @@ async function* queryLoop(
       {
         systemPrompt,
         userContext,
-        systemContext,
+        systemContext: effectiveSystemContext,
         toolUseContext,
         forkContextMessages: messagesForQuery,
       },
@@ -1002,7 +1022,7 @@ async function* queryLoop(
         [...messagesForQuery, ...assistantMessages],
         systemPrompt,
         userContext,
-        systemContext,
+        effectiveSystemContext,
         toolUseContext,
         querySource,
       )
@@ -1125,7 +1145,7 @@ async function* queryLoop(
           cacheSafeParams: {
             systemPrompt,
             userContext,
-            systemContext,
+            systemContext: effectiveSystemContext,
             toolUseContext,
             forkContextMessages: messagesForQuery,
           },
@@ -1269,7 +1289,7 @@ async function* queryLoop(
         assistantMessages,
         systemPrompt,
         userContext,
-        systemContext,
+        effectiveSystemContext,
         toolUseContext,
         querySource,
         stopHookActive,
@@ -1690,7 +1710,7 @@ async function* queryLoop(
         taskSummaryModule!.maybeGenerateTaskSummary({
           systemPrompt,
           userContext,
-          systemContext,
+          systemContext: effectiveSystemContext,
           toolUseContext,
           forkContextMessages: [
             ...messagesForQuery,

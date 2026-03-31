@@ -22,6 +22,7 @@ import {
   getSessionId,
 } from '../../bootstrap/state.js'
 import { getOauthConfig } from '../../constants/oauth.js'
+import { createGLMCompatibilityClient } from './providers/glmCompatibilityClient.js'
 import { isDebugToStdErr, logForDebugging } from '../../utils/debug.js'
 import {
   getAWSRegion,
@@ -128,6 +129,18 @@ export async function getAnthropicClient({
     defaultHeaders['x-anthropic-additional-protection'] = 'true'
   }
 
+  const resolvedFetch = buildFetch(fetchOverride, source)
+
+  if (getAPIProvider() === 'glm') {
+    return createGLMCompatibilityClient({
+      apiKey,
+      defaultHeaders,
+      fetch: resolvedFetch!,
+      timeout: parseInt(process.env.API_TIMEOUT_MS || String(600 * 1000), 10),
+      baseURL: process.env.GLM_BASE_URL || process.env.ZAI_BASE_URL,
+    })
+  }
+
   logForDebugging('[API:auth] OAuth token check starting')
   await checkAndRefreshOAuthTokenIfNeeded()
   logForDebugging('[API:auth] OAuth token check complete')
@@ -135,8 +148,6 @@ export async function getAnthropicClient({
   if (!isClaudeAISubscriber()) {
     await configureApiKeyHeaders(defaultHeaders, getIsNonInteractiveSession())
   }
-
-  const resolvedFetch = buildFetch(fetchOverride, source)
 
   const ARGS = {
     defaultHeaders,

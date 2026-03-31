@@ -145,6 +145,9 @@ function get3PFallbackSuggestion(model: string): string | undefined {
   if (getAPIProvider() === 'firstParty') {
     return undefined
   }
+  if (getAPIProvider() === 'glm') {
+    return undefined
+  }
   const lowerModel = model.toLowerCase()
   if (lowerModel.includes('opus-4-6') || lowerModel.includes('opus_4_6')) {
     return getModelStrings().opus41

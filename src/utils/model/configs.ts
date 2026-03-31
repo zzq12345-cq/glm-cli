@@ -1,7 +1,9 @@
 import type { ModelName } from './model.js'
 import type { APIProvider } from './providers.js'
 
-export type ModelConfig = Record<APIProvider, ModelName>
+export type BuiltinAPIProvider = Exclude<APIProvider, 'glm'>
+
+export type ModelConfig = Record<BuiltinAPIProvider, ModelName>
 
 // @[MODEL LAUNCH]: Add a new CLAUDE_*_CONFIG constant here. Double check the correct model strings
 // here since the pattern may change.

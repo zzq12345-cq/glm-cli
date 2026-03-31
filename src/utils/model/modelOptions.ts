@@ -43,6 +43,18 @@ export type ModelOption = {
 }
 
 export function getDefaultOptionForUser(fastMode = false): ModelOption {
+  if (getAPIProvider() === 'glm') {
+    const currentModel = renderDefaultModelSetting(
+      getDefaultMainLoopModelSetting(),
+    )
+    return {
+      value: null,
+      label: 'Default (recommended)',
+      description: `Use the default GLM coding model (currently ${currentModel})`,
+      descriptionForModel: `Default GLM coding model (currently ${currentModel})`,
+    }
+  }
+
   if (process.env.USER_TYPE === 'ant') {
     const currentModel = renderDefaultModelSetting(
       getDefaultMainLoopModelSetting(),
@@ -94,6 +106,16 @@ function getCustomSonnetOption(): ModelOption | undefined {
 // @[MODEL LAUNCH]: Update or add model option functions (getSonnetXXOption, getOpusXXOption, etc.)
 // with the new model's label and description. These appear in the /model picker.
 function getSonnet46Option(): ModelOption {
+  if (getAPIProvider() === 'glm') {
+    return {
+      value: getModelStrings().sonnet46,
+      label: 'GLM Balanced',
+      description: 'GLM balanced coding model',
+      descriptionForModel:
+        'GLM balanced coding model for everyday edits, debugging, and code understanding',
+    }
+  }
+
   const is3P = getAPIProvider() !== 'firstParty'
   return {
     value: is3P ? getModelStrings().sonnet46 : 'sonnet',
@@ -131,6 +153,16 @@ function getOpus41Option(): ModelOption {
 }
 
 function getOpus46Option(fastMode = false): ModelOption {
+  if (getAPIProvider() === 'glm') {
+    return {
+      value: getModelStrings().opus46,
+      label: 'GLM Strong',
+      description: 'GLM strongest coding model',
+      descriptionForModel:
+        'GLM strongest coding model for harder reasoning, larger changes, and deeper code tasks',
+    }
+  }
+
   const is3P = getAPIProvider() !== 'firstParty'
   return {
     value: is3P ? getModelStrings().opus46 : 'opus',
@@ -179,6 +211,16 @@ function getCustomHaikuOption(): ModelOption | undefined {
 }
 
 function getHaiku45Option(): ModelOption {
+  if (getAPIProvider() === 'glm') {
+    return {
+      value: 'haiku',
+      label: 'GLM Fast',
+      description: 'GLM fastest coding model',
+      descriptionForModel:
+        'GLM fastest coding model for quick reads, small fixes, and lightweight tasks',
+    }
+  }
+
   const is3P = getAPIProvider() !== 'firstParty'
   return {
     value: 'haiku',
@@ -269,6 +311,23 @@ function getOpusPlanOption(): ModelOption {
 // @[MODEL LAUNCH]: Update the model picker lists below to include/reorder options for the new model.
 // Each user tier (ant, Max/Team Premium, Pro/Team Standard/Enterprise, PAYG 1P, PAYG 3P) has its own list.
 function getModelOptionsBase(fastMode = false): ModelOption[] {
+  if (getAPIProvider() === 'glm') {
+    const glmOptions = [
+      getDefaultOptionForUser(fastMode),
+      getSonnet46Option(),
+      getOpus46Option(fastMode),
+      getHaiku45Option(),
+    ]
+    const seen = new Set<ModelSetting>()
+    return glmOptions.filter(option => {
+      if (seen.has(option.value)) {
+        return false
+      }
+      seen.add(option.value)
+      return true
+    })
+  }
+
   if (process.env.USER_TYPE === 'ant') {
     // Build options from antModels config
     const antModelOptions: ModelOption[] = getAntModels().map(m => ({

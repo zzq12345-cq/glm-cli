@@ -581,6 +581,15 @@ export async function verifyApiKey(
     ) {
       return false
     }
+    if (
+      getAPIProvider() === 'glm' &&
+      error instanceof Error &&
+      /401|403|unauthorized|authentication|invalid api key/i.test(
+        error.message,
+      )
+    ) {
+      return false
+    }
     throw error
   }
 }

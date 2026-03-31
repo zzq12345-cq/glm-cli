@@ -23,6 +23,7 @@ import {
   getCanonicalName,
   getMarketingNameForModel,
 } from '../utils/model/model.js'
+import { getAPIProvider } from '../utils/model/providers.js'
 import { getSkillToolCommands } from 'src/commands.js'
 import { SKILL_TOOL_NAME } from '../tools/SkillTool/constants.js'
 import { getOutputStyleConfig } from './outputStyles.js'
@@ -60,6 +61,10 @@ import { logForDebugging } from '../utils/debug.js'
 import { loadMemoryPrompt } from '../memdir/memdir.js'
 import { isUndercover } from '../utils/undercover.js'
 import { isMcpInstructionsDeltaEnabled } from '../utils/mcpInstructionsDelta.js'
+import {
+  detectProjectContext,
+  formatProjectDetectionForPrompt,
+} from '../query/projectDetection.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -197,6 +202,16 @@ function getSimpleSystemSection(): string {
 }
 
 function getSimpleDoingTasksSection(): string {
+  const glmCodingDisciplineSubitems =
+    getAPIProvider() === 'glm'
+      ? [
+          `On coding tasks, gather enough concrete context before changing code: read the target file before editing it, and for non-trivial changes inspect nearby implementations or tests so your edits match local patterns.`,
+          `For multi-file or risky changes, identify the intended change surface before editing. Keep the implementation scoped to that surface unless new evidence forces you to widen it.`,
+          `After edits, prefer the narrowest relevant verification command visible in the project context. If no reliable command is evident or you cannot run it, say that explicitly rather than implying the work was verified.`,
+          `When verification or a tool call fails, debug the concrete failure before changing tactics. Favor a small number of focused repair attempts over broad thrashing.`,
+        ]
+      : []
+
   const codeStyleSubitems = [
     `Don't add features, refactor code, or make "improvements" beyond what was asked. A bug fix doesn't need surrounding code cleaned up. A simple feature doesn't need extra configurability. Don't add docstrings, comments, or type annotations to code you didn't change. Only add comments where the logic isn't self-evident.`,
     `Don't add error handling, fallbacks, or validation for scenarios that can't happen. Trust internal code and framework guarantees. Only validate at system boundaries (user input, external APIs). Don't use feature flags or backwards-compatibility shims when you can just change the code.`,
@@ -231,6 +246,7 @@ function getSimpleDoingTasksSection(): string {
     `Do not create files unless they're absolutely necessary for achieving your goal. Generally prefer editing an existing file to creating a new one, as this prevents file bloat and builds on existing work more effectively.`,
     `Avoid giving time estimates or predictions for how long tasks will take, whether for your own work or for users planning projects. Focus on what needs to be done, not how long it might take.`,
     `If an approach fails, diagnose why before switching tactics—read the error, check your assumptions, try a focused fix. Don't retry the identical action blindly, but don't abandon a viable approach after a single failure either. Escalate to the user with ${ASK_USER_QUESTION_TOOL_NAME} only when you're genuinely stuck after investigation, not as a first response to friction.`,
+    ...glmCodingDisciplineSubitems,
     `Be careful not to introduce security vulnerabilities such as command injection, XSS, SQL injection, and other OWASP top 10 vulnerabilities. If you notice that you wrote insecure code, immediately fix it. Prioritize writing safe, secure, and correct code.`,
     ...codeStyleSubitems,
     `Avoid backwards-compatibility hacks like renaming unused _vars, re-exporting types, adding // removed comments for removed code, etc. If you are certain that something is unused, you can delete it completely.`,
@@ -607,7 +623,12 @@ export async function computeEnvInfo(
   modelId: string,
   additionalWorkingDirectories?: string[],
 ): Promise<string> {
-  const [isGit, unameSR] = await Promise.all([getIsGit(), getUnameSR()])
+  const [isGit, unameSR, projectDetection] = await Promise.all([
+    getIsGit(),
+    getUnameSR(),
+    detectProjectContext(),
+  ])
+  const projectDetectionLines = formatProjectDetectionForPrompt(projectDetection)
 
   // Undercover: keep ALL model names/IDs out of the system prompt so nothing
   // internal can leak into public commits/PRs. This includes the public
@@ -637,6 +658,16 @@ export async function computeEnvInfo(
     ? `\n\nAssistant knowledge cutoff is ${cutoff}.`
     : ''
 
+  const providerHint =
+    getAPIProvider() === 'glm'
+      ? `\nThis build is using a GLM backend through an OpenAI-compatible adapter. Do not assume Claude-specific model families, effort controls, or thinking features are available unless the current runtime explicitly shows them.`
+      : ''
+
+  const projectContextInfo =
+    projectDetectionLines.length > 0
+      ? `${projectDetectionLines.join('\n')}\n`
+      : ''
+
   return `Here is useful information about the environment you are running in:
 <env>
 Working directory: ${getCwd()}
@@ -644,15 +675,20 @@ Is directory a git repo: ${isGit ? 'Yes' : 'No'}
 ${additionalDirsInfo}Platform: ${env.platform}
 ${getShellInfoLine()}
 OS Version: ${unameSR}
-</env>
-${modelDescription}${knowledgeCutoffMessage}`
+${projectContextInfo}</env>
+${modelDescription}${providerHint}${knowledgeCutoffMessage}`
 }
 
 export async function computeSimpleEnvInfo(
   modelId: string,
   additionalWorkingDirectories?: string[],
 ): Promise<string> {
-  const [isGit, unameSR] = await Promise.all([getIsGit(), getUnameSR()])
+  const [isGit, unameSR, projectDetection] = await Promise.all([
+    getIsGit(),
+    getUnameSR(),
+    detectProjectContext(),
+  ])
+  const projectDetectionLines = formatProjectDetectionForPrompt(projectDetection)
 
   // Undercover: strip all model name/ID references. See computeEnvInfo.
   // DCE: inline the USER_TYPE check at each site — do NOT hoist to a const.
@@ -689,15 +725,22 @@ export async function computeSimpleEnvInfo(
     `Platform: ${env.platform}`,
     getShellInfoLine(),
     `OS Version: ${unameSR}`,
+    getAPIProvider() === 'glm'
+      ? `This build uses a GLM backend through an OpenAI-compatible adapter. Prefer explicit file reads, concrete tool use, and direct verification over relying on Claude-only provider features.`
+      : null,
+    projectDetectionLines.length > 0 ? `Likely project context:` : null,
+    projectDetectionLines.length > 0 ? projectDetectionLines : null,
     modelDescription,
     knowledgeCutoffMessage,
-    process.env.USER_TYPE === 'ant' && isUndercover()
+    getAPIProvider() === 'glm' ||
+    (process.env.USER_TYPE === 'ant' && isUndercover())
       ? null
       : `The most recent Claude model family is Claude 4.5/4.6. Model IDs — Opus 4.6: '${CLAUDE_4_5_OR_4_6_MODEL_IDS.opus}', Sonnet 4.6: '${CLAUDE_4_5_OR_4_6_MODEL_IDS.sonnet}', Haiku 4.5: '${CLAUDE_4_5_OR_4_6_MODEL_IDS.haiku}'. When building AI applications, default to the latest and most capable Claude models.`,
     process.env.USER_TYPE === 'ant' && isUndercover()
       ? null
       : `Claude Code is available as a CLI in the terminal, desktop app (Mac/Windows), web app (claude.ai/code), and IDE extensions (VS Code, JetBrains).`,
-    process.env.USER_TYPE === 'ant' && isUndercover()
+    getAPIProvider() === 'glm' ||
+    (process.env.USER_TYPE === 'ant' && isUndercover())
       ? null
       : `Fast mode for Claude Code uses the same ${FRONTIER_MODEL_NAME} model with faster output. It does NOT switch to a different model. It can be toggled with /fast.`,
   ].filter(item => item !== null)
@@ -755,7 +798,7 @@ export function getUnameSR(): string {
   return `${osType()} ${osRelease()}`
 }
 
-export const DEFAULT_AGENT_PROMPT = `You are an agent for Claude Code, Anthropic's official CLI for Claude. Given the user's message, you should use the tools available to complete the task. Complete the task fully—don't gold-plate, but don't leave it half-done. When you complete the task, respond with a concise report covering what was done and any key findings — the caller will relay this to the user, so it only needs the essentials.`
+export const DEFAULT_AGENT_PROMPT = `You are an agent for Claude Code, Anthropic's official CLI for Claude. Given the user's message, you should use the tools available to complete the task. Read the relevant files before editing them. For non-trivial code changes, inspect nearby patterns first so your edits match the codebase. After editing, run the narrowest reasonable verification command when possible, and report plainly if you could not verify. Complete the task fully without gold-plating it. When you complete the task, respond with a concise report covering what was done and any key findings — the caller will relay this to the user, so it only needs the essentials.`
 
 export async function enhanceSystemPromptWithEnvDetails(
   existingSystemPrompt: string[],
