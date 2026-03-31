@@ -1,0 +1,26 @@
+{
+  "id": "IMPL-1",
+  "title": "Seam analysis for src/services/api/claude.ts",
+  "status": "pending",
+  "phase": "PHASE-0",
+  "priority": "P0",
+  "goal": "Document safe extraction boundaries for the large claude.ts file before provider refactoring begins.",
+  "depends_on": [],
+  "files": [
+    "src/services/api/claude.ts",
+    "src/services/api/client.ts"
+  ],
+  "deliverables": [
+    "Seam map grouped into transport, orchestration, capability shaping, telemetry, and edge handling",
+    "Ordered extraction plan",
+    "List of high-risk functions that should not move in the first pass"
+  ],
+  "verification": [
+    "Seam analysis exists under .workflow/active/WFS-glm-coding-enhancement/.process/",
+    "Provider adapter boundary is explicit"
+  ],
+  "notes": [
+    "This is a prerequisite for the rest of the plan.",
+    "Avoid speculative refactoring during analysis."
+  ]
+}

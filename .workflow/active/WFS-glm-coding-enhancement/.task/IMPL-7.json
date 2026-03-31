@@ -1,0 +1,26 @@
+{
+  "id": "IMPL-7",
+  "title": "Add mocks, fixtures, and golden-path acceptance coverage",
+  "status": "pending",
+  "phase": "PHASE-3",
+  "priority": "P0",
+  "goal": "Make the GLM path testable in CI and prove the first useful workflow end to end.",
+  "depends_on": [
+    "IMPL-3",
+    "IMPL-6"
+  ],
+  "files": [
+    "src/services/api/providers/glmAdapter.ts",
+    "src/query.ts",
+    "test fixtures and integration coverage paths to be determined"
+  ],
+  "deliverables": [
+    "Injected transport mocks",
+    "Fixture-driven streaming parser tests",
+    "Golden-path acceptance scenario"
+  ],
+  "verification": [
+    "No live GLM credentials are required in CI",
+    "Golden-path scenario passes"
+  ]
+}

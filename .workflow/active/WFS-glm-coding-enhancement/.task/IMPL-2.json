@@ -1,0 +1,26 @@
+{
+  "id": "IMPL-2",
+  "title": "Create provider base layer and registry",
+  "status": "pending",
+  "phase": "PHASE-1",
+  "priority": "P0",
+  "goal": "Introduce a provider adapter abstraction without changing the outer query contract.",
+  "depends_on": [
+    "IMPL-1"
+  ],
+  "files": [
+    "src/utils/model/providers.ts",
+    "src/services/api/providers/base.ts",
+    "src/services/api/providers/types.ts",
+    "src/services/api/providers/providerRegistry.ts"
+  ],
+  "deliverables": [
+    "Provider adapter interface",
+    "Provider capability type definitions",
+    "Provider registry or selector"
+  ],
+  "verification": [
+    "Anthropic behavior can still be resolved through the new adapter boundary",
+    "GLM can be selected as a provider at configuration time"
+  ]
+}

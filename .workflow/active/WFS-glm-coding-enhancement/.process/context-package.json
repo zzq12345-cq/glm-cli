@@ -1,0 +1,47 @@
+{
+  "session_id": "WFS-glm-coding-enhancement",
+  "source_spec": "docs/superpowers/specs/2026-03-31-glm-coding-enhancement-design.md",
+  "workspace_type": "source-snapshot",
+  "git_available": false,
+  "locked_decisions": [
+    "Use an OpenAI-compatible GLM endpoint in Phase 1",
+    "Task classification is heuristic in Phase 1",
+    "Verification command selection depends on a project-detection module",
+    "Internal message structures stay stable in Phase 1"
+  ],
+  "key_paths": [
+    "src/services/api/claude.ts",
+    "src/services/api/client.ts",
+    "src/utils/model/providers.ts",
+    "src/utils/model/model.ts",
+    "src/utils/model/modelOptions.ts",
+    "src/utils/model/modelStrings.ts",
+    "src/utils/thinking.ts",
+    "src/utils/messages.ts",
+    "src/query.ts",
+    "src/query/config.ts",
+    "src/constants/prompts.ts",
+    "src/utils/systemPrompt.ts",
+    "src/services/tools/toolOrchestration.ts",
+    "src/services/tools/toolExecution.ts"
+  ],
+  "conflict_risk": "medium",
+  "reasons": [
+    "claude.ts is a large mixed-responsibility file",
+    "Current token and message handling are Anthropic-centric",
+    "Provider and capability assumptions are distributed across multiple modules"
+  ],
+  "golden_path": {
+    "scenario": "single-file function change with automatic verification",
+    "steps": [
+      "User requests an edit in an existing source file",
+      "Task classifier marks it as targeted small edit",
+      "System reads the file before editing",
+      "GLM emits a normalized edit tool call",
+      "Edit is applied",
+      "Project detection selects a related verification command",
+      "Verification succeeds",
+      "Final response reports both the change and verification result"
+    ]
+  }
+}

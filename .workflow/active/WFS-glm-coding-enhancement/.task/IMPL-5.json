@@ -1,0 +1,26 @@
+{
+  "id": "IMPL-5",
+  "title": "Add heuristic task classification and project detection",
+  "status": "pending",
+  "phase": "PHASE-2",
+  "priority": "P1",
+  "goal": "Improve edit discipline and verification command selection without LLM self-classification.",
+  "depends_on": [
+    "IMPL-3",
+    "IMPL-4"
+  ],
+  "files": [
+    "src/query/taskClassification.ts",
+    "src/query/projectDetection.ts",
+    "src/query/config.ts"
+  ],
+  "deliverables": [
+    "Deterministic task classifier",
+    "Project command detector for test, typecheck, lint, and build",
+    "Repository-level caching for detection results"
+  ],
+  "verification": [
+    "Edit-producing tasks are classified without using the model",
+    "Verification policy receives ranked command candidates"
+  ]
+}

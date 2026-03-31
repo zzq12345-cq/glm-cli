@@ -1,0 +1,29 @@
+{
+  "id": "IMPL-4",
+  "title": "Refactor capability checks, model handling, and token estimation",
+  "status": "pending",
+  "phase": "PHASE-1",
+  "priority": "P1",
+  "goal": "Make capability and budgeting logic provider-aware so GLM can run safely without Claude-only assumptions.",
+  "depends_on": [
+    "IMPL-2",
+    "IMPL-3"
+  ],
+  "files": [
+    "src/utils/model/model.ts",
+    "src/utils/model/modelOptions.ts",
+    "src/utils/model/modelStrings.ts",
+    "src/utils/thinking.ts",
+    "src/services/tokenEstimation.ts",
+    "src/utils/tokens.ts"
+  ],
+  "deliverables": [
+    "Provider-aware capability checks",
+    "Simplified GLM model selection",
+    "Pluggable or optional token estimator"
+  ],
+  "verification": [
+    "GLM path no longer depends on Claude-family string heuristics for core capability checks",
+    "Token estimation does not block the GLM path"
+  ]
+}

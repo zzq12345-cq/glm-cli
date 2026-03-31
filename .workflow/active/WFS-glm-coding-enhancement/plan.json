@@ -1,0 +1,112 @@
+{
+  "session_id": "WFS-glm-coding-enhancement",
+  "goal": "Build a pure GLM-powered coding CLI from this Claude Code source snapshot while preserving the existing interaction style and improving coding reliability.",
+  "source_spec": "docs/superpowers/specs/2026-03-31-glm-coding-enhancement-design.md",
+  "phases": [
+    {
+      "id": "PHASE-0",
+      "title": "Preparation and seam definition",
+      "tasks": [
+        "IMPL-1"
+      ]
+    },
+    {
+      "id": "PHASE-1",
+      "title": "Provider-safe GLM runtime",
+      "tasks": [
+        "IMPL-2",
+        "IMPL-3",
+        "IMPL-4"
+      ]
+    },
+    {
+      "id": "PHASE-2",
+      "title": "Coding workflow strengthening",
+      "tasks": [
+        "IMPL-5",
+        "IMPL-6"
+      ]
+    },
+    {
+      "id": "PHASE-3",
+      "title": "Testing and acceptance hardening",
+      "tasks": [
+        "IMPL-7"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "IMPL-1",
+      "title": "Seam analysis for claude.ts",
+      "phase": "PHASE-0",
+      "priority": "P0",
+      "depends_on": []
+    },
+    {
+      "id": "IMPL-2",
+      "title": "Create provider base layer and registry",
+      "phase": "PHASE-1",
+      "priority": "P0",
+      "depends_on": [
+        "IMPL-1"
+      ]
+    },
+    {
+      "id": "IMPL-3",
+      "title": "Implement OpenAI-compatible GLM adapter",
+      "phase": "PHASE-1",
+      "priority": "P0",
+      "depends_on": [
+        "IMPL-1",
+        "IMPL-2"
+      ]
+    },
+    {
+      "id": "IMPL-4",
+      "title": "Refactor capability checks and token estimation",
+      "phase": "PHASE-1",
+      "priority": "P1",
+      "depends_on": [
+        "IMPL-2",
+        "IMPL-3"
+      ]
+    },
+    {
+      "id": "IMPL-5",
+      "title": "Add heuristic task classification and project detection",
+      "phase": "PHASE-2",
+      "priority": "P1",
+      "depends_on": [
+        "IMPL-3",
+        "IMPL-4"
+      ]
+    },
+    {
+      "id": "IMPL-6",
+      "title": "Add context gathering, verification ladder, and repair loop",
+      "phase": "PHASE-2",
+      "priority": "P1",
+      "depends_on": [
+        "IMPL-4",
+        "IMPL-5"
+      ]
+    },
+    {
+      "id": "IMPL-7",
+      "title": "Add mocks, fixtures, and golden-path acceptance coverage",
+      "phase": "PHASE-3",
+      "priority": "P0",
+      "depends_on": [
+        "IMPL-3",
+        "IMPL-6"
+      ]
+    }
+  ],
+  "acceptance": [
+    "GLM is the only model backend",
+    "Interaction remains close to Claude Code",
+    "Golden-path scenario passes",
+    "Context and verification remain within latency budget"
+  ]
+}

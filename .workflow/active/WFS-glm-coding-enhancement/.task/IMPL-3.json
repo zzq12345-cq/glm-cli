@@ -1,0 +1,26 @@
+{
+  "id": "IMPL-3",
+  "title": "Implement OpenAI-compatible GLM adapter",
+  "status": "pending",
+  "phase": "PHASE-1",
+  "priority": "P0",
+  "goal": "Support a stable GLM request, streaming, tool-call, and error-normalization path.",
+  "depends_on": [
+    "IMPL-1",
+    "IMPL-2"
+  ],
+  "files": [
+    "src/services/api/providers/glmAdapter.ts",
+    "src/services/api/client.ts",
+    "src/services/api/claude.ts"
+  ],
+  "deliverables": [
+    "GLM adapter over OpenAI-compatible API",
+    "Mockable transport injection points",
+    "Normalized text and tool-call conversion"
+  ],
+  "verification": [
+    "Adapter unit tests pass with injected transport mocks",
+    "Malformed provider output degrades safely"
+  ]
+}

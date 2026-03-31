@@ -1,0 +1,9 @@
+{
+  "session_id": "WFS-glm-coding-enhancement",
+  "status": "planning",
+  "created_at": "2026-03-31",
+  "task_description": "Adapt this Claude Code source snapshot into a pure GLM-powered coding CLI with mild coding-focused enhancements.",
+  "source_spec": "docs/superpowers/specs/2026-03-31-glm-coding-enhancement-design.md",
+  "planning_mode": "manual-fallback",
+  "notes": "Created manually because the writing-plans skill is not available in this environment."
+}

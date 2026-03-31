@@ -1,0 +1,29 @@
+{
+  "id": "IMPL-6",
+  "title": "Add context gathering, verification ladder, and bounded repair loop",
+  "status": "pending",
+  "phase": "PHASE-2",
+  "priority": "P1",
+  "goal": "Increase coding reliability by improving context before edits and verification after edits.",
+  "depends_on": [
+    "IMPL-4",
+    "IMPL-5"
+  ],
+  "files": [
+    "src/query.ts",
+    "src/query/contextGathering.ts",
+    "src/query/verificationPolicy.ts",
+    "src/query/fixLoop.ts",
+    "src/constants/prompts.ts",
+    "src/utils/systemPrompt.ts"
+  ],
+  "deliverables": [
+    "Bounded pre-edit context gathering with latency budget",
+    "Lightweight short-plan support for complex tasks",
+    "Verification ladder and two-round repair loop"
+  ],
+  "verification": [
+    "Edit tasks verify before completion when a command is available",
+    "Repair loop stops after two retries"
+  ]
+}
