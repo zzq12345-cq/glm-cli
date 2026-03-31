@@ -1,8 +1,8 @@
 import type { ModelKey } from './configs.js'
 import type { ModelName } from './model.js'
 
-const DEFAULT_GLM_STRONG_MODEL = 'glm-4.5'
-const DEFAULT_GLM_BALANCED_MODEL = 'glm-4.5'
+const DEFAULT_GLM_STRONG_MODEL = 'glm-5.1'
+const DEFAULT_GLM_BALANCED_MODEL = 'glm-5.1'
 const DEFAULT_GLM_FAST_MODEL = 'glm-4.5-air'
 
 function getEnv(...keys: string[]): string | undefined {
