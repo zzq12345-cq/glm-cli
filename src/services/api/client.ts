@@ -136,6 +136,9 @@ export async function getAnthropicClient({
       apiKey,
       defaultHeaders,
       fetch: resolvedFetch!,
+      fetchOptions: getProxyFetchOptions({
+        forAnthropicAPI: true,
+      }),
       timeout: parseInt(process.env.API_TIMEOUT_MS || String(600 * 1000), 10),
       baseURL: process.env.GLM_BASE_URL || process.env.ZAI_BASE_URL,
     })

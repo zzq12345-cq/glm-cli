@@ -105,6 +105,7 @@ import {
   classifyTaskFromMessages,
   formatTaskClassificationForSystemContext,
 } from './query/taskClassification.js'
+import { maybeRunPostEditVerification } from './query/postEditVerification.js'
 import type { Terminal, Continue } from './query/transitions.js'
 import { feature } from 'bun:bundle'
 import {
@@ -451,19 +452,19 @@ async function* queryLoop(
       messagesForQuery = collapseResult.messages
     }
 
+    const isGLMProvider = getAPIProvider() === 'glm'
+    const taskClassification = isGLMProvider
+      ? classifyTaskFromMessages(messagesForQuery)
+      : null
     const effectiveSystemContext =
-      getAPIProvider() === 'glm'
-        ? (() => {
-            const classification = classifyTaskFromMessages(messagesForQuery)
-            if (!classification || classification.intent === 'unknown') {
-              return systemContext
-            }
-            return {
-              ...systemContext,
-              task_classification:
-                formatTaskClassificationForSystemContext(classification),
-            }
-          })()
+      isGLMProvider &&
+      taskClassification &&
+      taskClassification.intent !== 'unknown'
+        ? {
+            ...systemContext,
+            task_classification:
+              formatTaskClassificationForSystemContext(taskClassification),
+          }
         : systemContext
 
     const fullSystemPrompt = asSystemPrompt(
@@ -1538,6 +1539,40 @@ async function* queryLoop(
     // If a hook indicated to prevent continuation, stop here
     if (shouldPreventContinuation) {
       return { reason: 'hook_stopped' }
+    }
+
+    if (isGLMProvider) {
+      const verification = await maybeRunPostEditVerification({
+        messages: messagesForQuery,
+        toolUseBlocks,
+        toolResults,
+        classification: taskClassification,
+        abortSignal: updatedToolUseContext.abortController.signal,
+      })
+
+      for (const message of verification.messages) {
+        yield message
+        toolResults.push(message)
+      }
+
+      if (updatedToolUseContext.abortController.signal.aborted) {
+        if (
+          updatedToolUseContext.abortController.signal.reason !== 'interrupt'
+        ) {
+          yield createUserInterruptionMessage({
+            toolUse: true,
+          })
+        }
+        const nextTurnCountOnAbort = turnCount + 1
+        if (maxTurns && nextTurnCountOnAbort > maxTurns) {
+          yield createAttachmentMessage({
+            type: 'max_turns_reached',
+            maxTurns,
+            turnCount: nextTurnCountOnAbort,
+          })
+        }
+        return { reason: 'aborted_tools' }
+      }
     }
 
     if (tracking?.compacted) {

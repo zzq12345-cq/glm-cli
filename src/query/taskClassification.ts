@@ -72,7 +72,7 @@ function findLatestUserText(messages: readonly Message[]): string | null {
   return null
 }
 
-function classifyTaskText(text: string): TaskClassification {
+export function classifyTaskText(text: string): TaskClassification {
   const normalized = text.trim()
   const fileMatches = normalized.match(FILE_PATH_RE) ?? []
   const distinctFiles = new Set(fileMatches.map(match => match.toLowerCase()))

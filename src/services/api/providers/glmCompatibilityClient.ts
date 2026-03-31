@@ -23,6 +23,7 @@ type GLMClientOptions = {
   baseURL?: string
   defaultHeaders: Record<string, string>
   fetch: FetchLike
+  fetchOptions?: NonNullable<ClientOptions['fetchOptions']>
   timeout: number
 }
 
@@ -493,6 +494,7 @@ async function fetchJSON(
   let response: Response
   try {
     response = await options.fetch(resolveGLMBaseURL(options.baseURL), {
+      ...options.fetchOptions,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -589,16 +591,20 @@ class GLMMessageStream implements AsyncIterable<BetaRawMessageStreamEvent> {
       return this.responsePromise
     }
 
-    this.responsePromise = this.options.fetch(resolveGLMBaseURL(this.options.baseURL), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${getGLMApiKey(this.options.apiKey)}`,
-        ...this.options.defaultHeaders,
+    this.responsePromise = this.options.fetch(
+      resolveGLMBaseURL(this.options.baseURL),
+      {
+        ...this.options.fetchOptions,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getGLMApiKey(this.options.apiKey)}`,
+          ...this.options.defaultHeaders,
+        },
+        body: JSON.stringify(this.body),
+        signal: this.controller.signal,
       },
-      body: JSON.stringify(this.body),
-      signal: this.controller.signal,
-    })
+    )
 
     const timeoutId = setTimeout(() => {
       if (!this.controller.signal.aborted) {
