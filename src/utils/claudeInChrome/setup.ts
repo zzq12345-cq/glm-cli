@@ -1,4 +1,3 @@
-import { BROWSER_TOOLS } from '@ant/claude-for-chrome-mcp'
 import { chmod, mkdir, readFile, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
@@ -94,9 +93,7 @@ export function setupClaudeInChrome(): {
   systemPrompt: string
 } {
   const isNativeBuild = isInBundledMode()
-  const allowedTools = BROWSER_TOOLS.map(
-    tool => `mcp__claude-in-chrome__${tool.name}`,
-  )
+  const allowedTools = getClaudeInChromeAllowedTools()
 
   const env: Record<string, string> = {}
   if (getSessionBypassPermissionsMode()) {
@@ -167,6 +164,23 @@ export function setupClaudeInChrome(): {
       allowedTools,
       systemPrompt: getChromeSystemPrompt(),
     }
+  }
+}
+
+function getClaudeInChromeAllowedTools(): string[] {
+  try {
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    const { BROWSER_TOOLS } = require('@ant/claude-for-chrome-mcp') as {
+      BROWSER_TOOLS: Array<{ name: string }>
+    }
+    /* eslint-enable @typescript-eslint/no-require-imports */
+    return BROWSER_TOOLS.map(tool => `mcp__claude-in-chrome__${tool.name}`)
+  } catch {
+    logForDebugging(
+      '[Claude in Chrome] Browser MCP package unavailable; continuing without tool list',
+      { level: 'info' },
+    )
+    return []
   }
 }
 
