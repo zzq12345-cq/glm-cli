@@ -1,4 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk'
+import Anthropic from '@anthropic-ai/sdk'
 import type { ClientOptions } from '@anthropic-ai/sdk'
 import type {
   BetaContentBlock,
@@ -429,10 +429,7 @@ function responseToBetaMessage(
   const content: BetaContentBlock[] = []
 
   if (message?.content) {
-    content.push({
-      type: 'text',
-      text: message.content,
-    })
+    content.push({ type: 'text', text: message.content } as unknown as BetaContentBlock)
   }
 
   for (const toolCall of message?.tool_calls ?? []) {
@@ -454,7 +451,7 @@ function responseToBetaMessage(
     stop_sequence: null,
     usage: mapUsage(response.usage),
     _request_id: response.id,
-  } as BetaMessage & { _request_id?: string }
+  } as unknown as BetaMessage & { _request_id?: string }
 }
 
 function createApproxCountTokensResponse(
@@ -466,15 +463,35 @@ function createApproxCountTokensResponse(
     tools: params.tools ?? [],
   }
   const serialized = JSON.stringify(payload)
+
+  // 改进的 GLM Token 近似估算策略：
+  // 英文字符/标记（ASCII）平均约 3.5 个字符一个 Token
+  // 中文等非 ASCII 字符平均约 1.5 个字符一个 Token
+  const asciiCount = serialized.replace(/[\u0100-\uffff]/g, '').length
+  const nonAsciiCount = serialized.length - asciiCount
+
   return {
-    input_tokens: Math.max(1, Math.round(serialized.length / 4)),
+    input_tokens: Math.max(
+      1,
+      Math.ceil(asciiCount / 3.5 + nonAsciiCount / 1.5),
+    ),
   }
 }
 
 async function parseError(response: Response): Promise<never> {
-  const body = await response.text()
-  throw new Error(
-    `GLM API request failed with ${response.status} ${response.statusText}: ${body}`,
+  const bodyText = await response.text()
+  let errorObj: any
+  try {
+    errorObj = JSON.parse(bodyText)
+  } catch {
+    errorObj = { message: bodyText }
+  }
+
+  throw Anthropic.APIError.generate(
+    response.status,
+    errorObj,
+    `GLM API request failed with ${response.status} ${response.statusText}`,
+    response.headers as any,
   )
 }
 
@@ -503,6 +520,22 @@ async function fetchJSON(
       },
       body: JSON.stringify(body),
       signal: controller.signal,
+    })
+  } catch (error: unknown) {
+    if (
+      controller.signal.aborted &&
+      controller.signal.reason === 'glm_request_timeout'
+    ) {
+      throw new Anthropic.APIConnectionTimeoutError({
+        message: 'Request timed out waiting for GLM API',
+      })
+    }
+    if (requestOptions?.signal?.aborted) {
+      throw new Anthropic.APIUserAbortError()
+    }
+    throw new Anthropic.APIConnectionError({
+      message: error instanceof Error ? error.message : String(error),
+      cause: error instanceof Error ? error : undefined,
     })
   } finally {
     clearTimeout(timeoutId)
@@ -591,9 +624,8 @@ class GLMMessageStream implements AsyncIterable<BetaRawMessageStreamEvent> {
       return this.responsePromise
     }
 
-    this.responsePromise = this.options.fetch(
-      resolveGLMBaseURL(this.options.baseURL),
-      {
+    this.responsePromise = this.options
+      .fetch(resolveGLMBaseURL(this.options.baseURL), {
         ...this.options.fetchOptions,
         method: 'POST',
         headers: {
@@ -603,8 +635,24 @@ class GLMMessageStream implements AsyncIterable<BetaRawMessageStreamEvent> {
         },
         body: JSON.stringify(this.body),
         signal: this.controller.signal,
-      },
-    )
+      })
+      .catch((error: unknown) => {
+        if (
+          this.controller.signal.aborted &&
+          this.controller.signal.reason === 'glm_stream_timeout'
+        ) {
+          throw new Anthropic.APIConnectionTimeoutError({
+            message: 'Request timed out waiting for GLM API',
+          })
+        }
+        if (this.requestOptions?.signal?.aborted) {
+          throw new Anthropic.APIUserAbortError()
+        }
+        throw new Anthropic.APIConnectionError({
+          message: error instanceof Error ? error.message : String(error),
+          cause: error instanceof Error ? error : undefined,
+        })
+      })
 
     const timeoutId = setTimeout(() => {
       if (!this.controller.signal.aborted) {
@@ -670,7 +718,7 @@ class GLMMessageStream implements AsyncIterable<BetaRawMessageStreamEvent> {
             stop_reason: null,
             stop_sequence: null,
             usage,
-          } as BetaMessage,
+          } as unknown as BetaMessage,
         } as BetaRawMessageStreamEvent
       }
 
@@ -811,14 +859,15 @@ export async function createGLMCompatibilityClient(
     },
     models: {
       list: async function* () {
-        const model =
-          process.env.GLM_MODEL ||
-          process.env.ZAI_MODEL ||
-          'glm-4.5'
-        yield {
-          id: model,
-          max_input_tokens: 128000,
-          max_tokens: 8192,
+        const defaultModel = process.env.GLM_MODEL || process.env.ZAI_MODEL || 'glm-5.1'
+        const models = new Set([defaultModel, 'glm-5.1', 'glm-4.5', 'glm-4.5-air'])
+        for (const model of models) {
+          yield {
+            id: model as 'claude-3-opus-20240229',
+            type: 'model',
+            created_at: '2024-01-01T00:00:00Z',
+            display_name: model,
+          }
         }
       },
     },
